@@ -1,0 +1,70 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def duffing_ode_ej3(state, t, delta, alpha, beta, gamma, omega):
+    x, v = state
+    dxdt = v
+    # Ajuste de signos exacto para el atractor de Guckenheimer & Holmes (Fig 1-b)
+    # Ecuación: x'' + \delta x' - x + x^3 = \gamma \cos(\omega t) -> x'' = - \delta x' + x - x^3 + \gamma \cos(\omega t)
+    dvdt = -delta * v + (-alpha) * x - beta * (x ** 3) + gamma * np.cos(omega * t)
+    return np.array([dxdt, dvdt], dtype=float)
+
+
+def rk4_step_ej3(state, t, dt, delta, alpha, beta, gamma, omega):
+    k1 = duffing_ode_ej3(state, t, delta, alpha, beta, gamma, omega)
+    k2 = duffing_ode_ej3(state + 0.5 * dt * k1, t + 0.5 * dt, delta, alpha, beta, gamma, omega)
+    k3 = duffing_ode_ej3(state + 0.5 * dt * k2, t + 0.5 * dt, delta, alpha, beta, gamma, omega)
+    k4 = duffing_ode_ej3(state + dt * k3, t + dt, delta, alpha, beta, gamma, omega)
+    return state + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
+
+
+def simulate_poincare_ej3():
+    delta = 0.15
+    alpha = -1.0
+    beta = 1.0
+    gamma = 0.3
+    omega = 1.0
+
+    T = 2.0 * np.pi / omega
+    t = 0.0
+    state = np.array([0.5, 0.5], dtype=float)
+    dt = 0.01
+    t_max = 6000.0
+
+    # Descartar transitorio largo para que dibuje el atractor completo
+    transient_time = 500 * T
+    while t < transient_time:
+        state = rk4_step_ej3(state, t, dt, delta, alpha, beta, gamma, omega)
+        if np.any(np.isnan(state)):
+            break
+        t += dt
+
+    poincare_x = []
+    poincare_v = []
+
+    next_sample = t + T
+    while t < t_max:
+        state = rk4_step_ej3(state, t, dt, delta, alpha, beta, gamma, omega)
+        if np.any(np.isnan(state)):
+            break
+        t += dt
+        if t >= next_sample:
+            poincare_x.append(state[0])
+            poincare_v.append(state[1])
+            next_sample += T
+
+    return np.array(poincare_x), np.array(poincare_v)
+
+
+# Ejecutar simulación
+px_3, pv_3 = simulate_poincare_ej3()
+
+# Graficar resultado
+plt.figure(figsize=(7, 6))
+plt.scatter(px_3, pv_3, s=0.6, color='black')
+plt.title(r"Mapa Estroboscópico - Ejercicio 3 ($\delta=0.15$)")
+plt.xlabel("$x$")
+plt.ylabel(r"$\dot{x}$")
+plt.grid(True)
+plt.show()
